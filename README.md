@@ -48,6 +48,13 @@ Para que no se borre al actualizar:
 npm run dev
 ```
 
+## Nota de despliegue en Vercel
+
+Si ves pantalla en blanco en produccion, verifica que ambas variables existan en Vercel (Production):
+
+- `VITE_SUPABASE_URL`
+- `VITE_SUPABASE_ANON_KEY`
+
 ## Crear administrador
 
 Despues de registrar un usuario normal, ejecuta en SQL Editor de Supabase:
