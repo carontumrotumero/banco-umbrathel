@@ -7,6 +7,14 @@ function formatMoney(value) {
   return `${CURRENCY} ${Number(value || 0).toFixed(2)}`
 }
 
+function signedAmount(tx) {
+  if (!tx) return 0
+  if (tx.type === 'admin_debit' || tx.type === 'transfer_out' || tx.type === 'withdraw') {
+    return -Math.abs(Number(tx.amount || 0))
+  }
+  return Math.abs(Number(tx.amount || 0))
+}
+
 function AuthView({ onAuth }) {
   const [isSignUp, setIsSignUp] = useState(false)
   const [email, setEmail] = useState('')
@@ -80,8 +88,6 @@ function Dashboard({ session }) {
   const [users, setUsers] = useState([])
   const [message, setMessage] = useState('')
 
-  const [depositAmount, setDepositAmount] = useState('')
-  const [withdrawAmount, setWithdrawAmount] = useState('')
   const [transferToEmail, setTransferToEmail] = useState('')
   const [transferAmount, setTransferAmount] = useState('')
 
@@ -168,20 +174,6 @@ function Dashboard({ session }) {
     return true
   }
 
-  async function doDeposit(e) {
-    e.preventDefault()
-    if (!depositAmount) return
-    const ok = await runRpc('deposit_self', { p_amount: Number(depositAmount) })
-    if (ok) setDepositAmount('')
-  }
-
-  async function doWithdraw(e) {
-    e.preventDefault()
-    if (!withdrawAmount) return
-    const ok = await runRpc('withdraw_self', { p_amount: Number(withdrawAmount) })
-    if (ok) setWithdrawAmount('')
-  }
-
   async function doTransfer(e) {
     e.preventDefault()
     if (!transferAmount || !transferToEmail) return
@@ -198,7 +190,7 @@ function Dashboard({ session }) {
   async function doAdminCredit(e) {
     e.preventDefault()
     if (!adminAmount || !adminUserId) return
-    const ok = await runRpc('admin_credit_user', {
+    const ok = await runRpc('admin_adjust_user_balance', {
       p_user_id: adminUserId,
       p_amount: Number(adminAmount)
     })
@@ -233,18 +225,6 @@ function Dashboard({ session }) {
       </section>
 
       <section className="grid">
-        <form className="card" onSubmit={doDeposit}>
-          <h3>Ingreso</h3>
-          <input type="number" min="0.01" step="0.01" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} required />
-          <button type="submit">Ingresar</button>
-        </form>
-
-        <form className="card" onSubmit={doWithdraw}>
-          <h3>Retiro</h3>
-          <input type="number" min="0.01" step="0.01" value={withdrawAmount} onChange={(e) => setWithdrawAmount(e.target.value)} required />
-          <button type="submit">Retirar</button>
-        </form>
-
         <form className="card" onSubmit={doTransfer}>
           <h3>Transferencia</h3>
           <input type="email" placeholder="Correo destinatario" value={transferToEmail} onChange={(e) => setTransferToEmail(e.target.value)} required />
@@ -256,7 +236,7 @@ function Dashboard({ session }) {
       {isAdmin && (
         <section className="card admin">
           <h3>Panel Administrador</h3>
-          <p>Como administrador, puedes agregar saldo a cualquier usuario.</p>
+          <p>Como administrador, puedes ajustar saldo: positivo para sumar y negativo para restar.</p>
           <form onSubmit={doAdminCredit}>
             <select value={adminUserId} onChange={(e) => setAdminUserId(e.target.value)} required>
               <option value="">Selecciona usuario</option>
@@ -266,8 +246,8 @@ function Dashboard({ session }) {
                 </option>
               ))}
             </select>
-            <input type="number" min="0.01" step="0.01" placeholder="Monto a acreditar" value={adminAmount} onChange={(e) => setAdminAmount(e.target.value)} required />
-            <button type="submit">Acreditar dinero</button>
+            <input type="number" step="0.01" placeholder="Monto (+ suma / - resta)" value={adminAmount} onChange={(e) => setAdminAmount(e.target.value)} required />
+            <button type="submit">Aplicar ajuste</button>
           </form>
         </section>
       )}
@@ -292,7 +272,7 @@ function Dashboard({ session }) {
                   <td>{new Date(tx.created_at).toLocaleString()}</td>
                   <td>{tx.type}</td>
                   <td>{tx.detail}</td>
-                  <td>{formatMoney(tx.amount)}</td>
+                  <td>{formatMoney(signedAmount(tx))}</td>
                 </tr>
               ))}
             </tbody>
