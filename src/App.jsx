@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { supabase, supabaseConfigError } from './supabaseClient'
 
 const CURRENCY = 'Ḡ'
@@ -87,12 +87,15 @@ function Dashboard({ session }) {
 
   const [adminUserId, setAdminUserId] = useState('')
   const [adminAmount, setAdminAmount] = useState('')
+  const refreshTimer = useRef(null)
 
   const isAdmin = useMemo(() => profile?.role === 'admin', [profile])
 
-  async function loadData() {
-    setLoading(true)
-    setMessage('')
+  const loadData = useCallback(async (silent = false) => {
+    if (!silent) {
+      setLoading(true)
+      setMessage('')
+    }
 
     const [{ data: p, error: pErr }, { data: acc, error: accErr }] = await Promise.all([
       supabase.from('profiles').select('*').eq('id', session.user.id).single(),
@@ -100,8 +103,8 @@ function Dashboard({ session }) {
     ])
 
     if (pErr || accErr) {
-      setMessage(pErr?.message || accErr?.message || 'Error cargando datos')
-      setLoading(false)
+      if (!silent) setMessage(pErr?.message || accErr?.message || 'Error cargando datos')
+      if (!silent) setLoading(false)
       return
     }
 
@@ -115,7 +118,7 @@ function Dashboard({ session }) {
       .limit(30)
 
     if (txErr) {
-      setMessage(txErr.message)
+      if (!silent) setMessage(txErr.message)
     } else {
       setTransactions(tx || [])
     }
@@ -128,12 +131,31 @@ function Dashboard({ session }) {
       setUsers(userList || [])
     }
 
-    setLoading(false)
+    if (!silent) setLoading(false)
+  }, [session.user.id])
+
+  function scheduleRefresh() {
+    if (refreshTimer.current) return
+    refreshTimer.current = setTimeout(() => {
+      refreshTimer.current = null
+      loadData(true)
+    }, 250)
   }
 
   useEffect(() => {
     loadData()
-  }, [])
+    const channel = supabase
+      .channel(`bank-live-${session.user.id}`)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'accounts', filter: `user_id=eq.${session.user.id}` }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'transactions' }, scheduleRefresh)
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'profiles', filter: `id=eq.${session.user.id}` }, scheduleRefresh)
+      .subscribe()
+
+    return () => {
+      if (refreshTimer.current) clearTimeout(refreshTimer.current)
+      supabase.removeChannel(channel)
+    }
+  }, [loadData, session.user.id])
 
   async function runRpc(name, payload) {
     setMessage('')
@@ -199,7 +221,7 @@ function Dashboard({ session }) {
         <div>
           <h1>Banco de Umbrathel</h1>
           <p>
-            {profile?.full_name || profile?.email} · Rol: <strong>{profile?.role}</strong>
+            {profile?.full_name || profile?.email || session.user.email} · Rol: <strong>{profile?.role || 'user'}</strong>
           </p>
         </div>
         <button onClick={signOut}>Cerrar sesión</button>
