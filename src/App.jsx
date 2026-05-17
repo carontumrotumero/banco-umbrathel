@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
-import { supabase } from './supabaseClient'
+import { supabase, supabaseConfigError } from './supabaseClient'
 
 const CURRENCY = 'Ḡ'
 
@@ -284,6 +284,16 @@ function Dashboard({ session }) {
 }
 
 export default function App() {
+  if (supabaseConfigError) {
+    return (
+      <div className="auth-card">
+        <h1>Banco de Umbrathel</h1>
+        <p className="message">{supabaseConfigError}</p>
+        <p>Configura esas variables en Vercel Project Settings → Environment Variables y redeploy.</p>
+      </div>
+    )
+  }
+
   const [session, setSession] = useState(null)
 
   useEffect(() => {
