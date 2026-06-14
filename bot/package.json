@@ -1,0 +1,25 @@
+{
+  "name": "minecraft-verifier-bot",
+  "version": "1.0.0",
+  "description": "Discord bot for Minecraft account verification",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "deploy": "node deploy-commands.js",
+    "dev": "node --watch index.js"
+  },
+  "dependencies": {
+    "@supabase/supabase-js": "^2.45.0",
+    "axios": "^1.7.2",
+    "discord.js": "^14.16.3",
+    "dotenv": "^16.4.5",
+    "ssh2": "^1.17.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "allowScripts": {
+    "ssh2": true,
+    "cpu-features": true
+  }
+}
