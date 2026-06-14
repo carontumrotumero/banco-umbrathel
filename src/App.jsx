@@ -79,7 +79,7 @@ function Dashboard({ session }) {
   const [salaryRecords, setSalaryRecords] = useState([])
   const [listings, setListings] = useState([])
 
-  const [transferToEmail, setTransferToEmail] = useState('')
+  const [transferToDiscord, setTransferToDiscord] = useState('')
   const [transferAmount, setTransferAmount] = useState('')
 
   const [adminUserId, setAdminUserId] = useState('')
@@ -139,8 +139,8 @@ function Dashboard({ session }) {
     if (p.role === 'admin') {
       const { data: userList, error: userErr } = await supabase
         .from('profiles')
-        .select('id, email, full_name')
-        .order('email', { ascending: true })
+        .select('id, email, full_name, discord_id, discord_username')
+        .order('discord_username', { ascending: true })
       if (userErr && !silent) setMessage(userErr.message)
       setUsers(userList || [])
     }
@@ -188,13 +188,13 @@ function Dashboard({ session }) {
 
   async function doTransfer(e) {
     e.preventDefault()
-    if (!transferAmount || !transferToEmail) return
-    const ok = await runRpc('transfer_by_email', {
-      p_to_email: transferToEmail,
+    if (!transferAmount || !transferToDiscord) return
+    const ok = await runRpc('transfer_by_discord', {
+      p_to_discord_id: transferToDiscord.trim(),
       p_amount: Number(transferAmount)
     })
     if (ok) {
-      setTransferToEmail('')
+      setTransferToDiscord('')
       setTransferAmount('')
     }
   }
@@ -286,7 +286,7 @@ function Dashboard({ session }) {
         <div>
           <h1>Banco de Umbrathel</h1>
           <p>
-            {profile?.full_name || profile?.email || session.user.email} · Rol: <strong>{profile?.role || 'user'}</strong>
+            {profile?.discord_username || profile?.full_name || profile?.email || session.user.email} · Rol: <strong>{profile?.role || 'user'}</strong>
           </p>
         </div>
         <button onClick={signOut}>Cerrar sesión</button>
@@ -308,7 +308,8 @@ function Dashboard({ session }) {
           <section className="grid">
             <form className="card" onSubmit={doTransfer}>
               <h3>Transferencia</h3>
-              <input type="email" placeholder="Correo destinatario" value={transferToEmail} onChange={(e) => setTransferToEmail(e.target.value)} required />
+              <input placeholder="ID de Discord del destinatario" value={transferToDiscord} onChange={(e) => setTransferToDiscord(e.target.value)} required />
+              <small style={{ color: '#888', marginTop: '-0.5rem' }}>Clic derecho en el usuario → Copiar ID de usuario</small>
               <input type="number" min="0.01" step="0.01" placeholder="Monto" value={transferAmount} onChange={(e) => setTransferAmount(e.target.value)} required />
               <button type="submit">Transferir</button>
             </form>
@@ -321,7 +322,7 @@ function Dashboard({ session }) {
                   <select value={adminUserId} onChange={(e) => setAdminUserId(e.target.value)} required>
                     <option value="">Selecciona usuario</option>
                     {users.map((u) => (
-                      <option key={u.id} value={u.id}>{u.email} {u.full_name ? `(${u.full_name})` : ''}</option>
+                      <option key={u.id} value={u.id}>{u.discord_username || u.full_name || u.email}</option>
                     ))}
                   </select>
                   <input type="number" step="0.01" placeholder="Monto (+/-)" value={adminAmount} onChange={(e) => setAdminAmount(e.target.value)} required />
@@ -370,7 +371,7 @@ function Dashboard({ session }) {
                 <select value={salaryUserId} onChange={(e) => setSalaryUserId(e.target.value)} required>
                   <option value="">Selecciona usuario</option>
                   {users.map((u) => (
-                    <option key={u.id} value={u.id}>{u.email} {u.full_name ? `(${u.full_name})` : ''}</option>
+                    <option key={u.id} value={u.id}>{u.discord_username || u.full_name || u.email}</option>
                   ))}
                 </select>
                 <input type="number" min="0.01" step="0.01" placeholder="Monto salario" value={salaryAmount} onChange={(e) => setSalaryAmount(e.target.value)} required />
