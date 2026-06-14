@@ -278,7 +278,7 @@ function Dashboard({ session }) {
 
   if (loading) return <p className="loading">Cargando panel bancario...</p>
 
-  const visibleListings = listings.filter((item) => item.is_active || item.seller_id === session.user.id)
+  const visibleListings = listings.filter((item) => item.is_active)
 
   return (
     <div className="container">
